@@ -28,3 +28,7 @@ class JobNotFoundException(
 class VideoNotReadyException(
     detail: String,
 ) : ErrorResponseException(HttpStatus.CONFLICT, problem(HttpStatus.CONFLICT, "Video not ready", detail), null)
+
+class ScriptNotFoundException(
+    id: UUID,
+) : ErrorResponseException(HttpStatus.NOT_FOUND, problem(HttpStatus.NOT_FOUND, "Script not found", "No script with id $id"), null)

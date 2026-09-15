@@ -1,0 +1,24 @@
+name: watercolor-bedtime
+description: Gentle watercolor picture book with pastel colours, a slower voice and a calm mood.
+renderer: illustrated
+format: { width: 720, height: 1280, fps: 30, crf: 23, preset: veryfast }
+style: >-
+  Gentle watercolor children's picture-book illustration, soft pastel palette, visible paper texture,
+  loose brush edges, warm dreamy lighting, cosy and calm
+negative: text, letters, watermark, signature, photo, harsh contrast, scary, dark horror
+wordsPerMinute: 135
+voices: { piper: en_US-lessac-medium, say: Samantha, espeak-ng: en-us }
+cameraMoves: [zoom_in, pan_right, pan_up, zoom_out]
+scenes: { min: 3, max: 6 }
+maxWords: 115
+transitionSeconds: 0.7
+image: { width: 768, height: 1344, steps: 4 }
+caption:
+  fontName: Serif
+  fontSize: 44
+  textColor: "#FFFDF5"
+  outlineColor: "#4A3B5C"
+  boxColor: "#4A3B5C"
+  boxOpacity: 0.3
+  positionY: 0.82
+  maxWords: 6

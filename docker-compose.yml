@@ -1,3 +1,8 @@
+# Settings come from .env (copy .env.example). Keys are never baked into the image.
+#
+#   Mac (Ollama running natively, using the GPU):   docker compose up -d --build
+#   Linux (Ollama in a container too):              docker compose --profile ollama up -d --build
+#                                                   with STORYBUILDER_LLM_BASE_URL=http://ollama:11434 in .env
 services:
   story-builder:
     build: .
@@ -5,13 +10,56 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # piper = natural neural voice (default), espeak = lightweight robotic fallback
-      STORYBUILDER_TTS_ENGINE: piper
-      # Rendering is CPU-bound: keep at or below the CPU cores given to the container.
-      STORYBUILDER_MAX_CONCURRENT_JOBS: 2
+      # Clients must send one of these in the X-API-Key header (comma-separate several keys).
+      STORYBUILDER_SECURITY_API_KEYS: ${STORYBUILDER_API_KEY:?Set STORYBUILDER_API_KEY in .env (see .env.example)}
+      # fal.ai key for FLUX illustrations; empty = offline placeholder art.
+      FAL_KEY: ${FAL_KEY:-}
+      # Scene director (Ollama or any OpenAI-compatible endpoint).
+      STORYBUILDER_LLM_BASE_URL: ${STORYBUILDER_LLM_BASE_URL:-http://host.docker.internal:11434}
+      STORYBUILDER_LLM_MODEL: ${STORYBUILDER_LLM_MODEL:-llama3.2:3b}
+      # piper = natural neural voice, espeak = lightweight robotic fallback
+      STORYBUILDER_TTS_ENGINE: ${STORYBUILDER_TTS_ENGINE:-piper}
+      # Jobs rendered at once; 0 = auto (one per 1.5 GB of memory and per 4 cores, at least one).
+      STORYBUILDER_MAX_CONCURRENT_JOBS: ${STORYBUILDER_MAX_CONCURRENT_JOBS:-0}
+    extra_hosts:
+      # Lets Linux hosts reach a natively installed Ollama the same way Docker Desktop does.
+      - "host.docker.internal:host-gateway"
     volumes:
       - story-videos:/data/work
     restart: unless-stopped
 
+  # ---- optional: Ollama in Docker (Linux servers) — enable with --profile ollama ----------------
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ollama]
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    # NVIDIA GPU (strongly recommended for the 60 s target): install nvidia-container-toolkit, then uncomment.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+  # One-shot: downloads the director model into the ollama volume, then exits.
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles: [ollama]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["ollama", "pull", "${STORYBUILDER_LLM_MODEL:-llama3.2:3b}"]
+    restart: "no"
+
 volumes:
   story-videos:
+  ollama-models:

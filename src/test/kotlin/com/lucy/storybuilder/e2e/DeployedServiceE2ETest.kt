@@ -4,6 +4,7 @@ import com.lucy.storybuilder.config.StoryBuilderProperties
 import com.lucy.storybuilder.process.Ffmpeg
 import com.lucy.storybuilder.process.ProcessRunner
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -36,16 +37,26 @@ import kotlin.test.fail
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DeployedServiceE2ETest {
     private val baseUrl = System.getProperty("e2e.baseUrl", "http://localhost:8080").trimEnd('/')
+    private val apiKey = System.getProperty("e2e.apiKey").orEmpty()
+
+    /** Set when the target has a working LLM (and optionally FAL_KEY): then fallbacks count as failures. */
+    private val requireAi = System.getProperty("e2e.requireAi").toBoolean()
     private val processRunner = ProcessRunner()
     private val ffmpeg = Ffmpeg(StoryBuilderProperties(), processRunner)
     private val downloads: Path = Files.createTempDirectory("story-e2e-")
 
-    private val client =
+    private val client = client(apiKey)
+
+    private fun client(key: String) =
         RestClient
             .builder()
             .baseUrl(baseUrl)
             .defaultStatusHandler({ true }) { _, _ -> } // assert on status codes instead of throwing
+            .apply { b -> if (key.isNotEmpty()) b.defaultHeader("X-API-Key", key) }
             .build()
+
+    /** The original look: its checks below are exact (1080p, 24 fps, 15 px/s scroll). */
+    private fun textScroll(body: Map<String, Any>) = body + ("skill" to "text-scroll")
 
     private data class Rendered(
         val id: String,
@@ -56,11 +67,13 @@ class DeployedServiceE2ETest {
     /** Scene 0 has 15 words (~6 s), long enough to measure scrolling away from the fades. */
     private val story by lazy {
         render(
-            mapOf(
-                "text" to
-                    "The fox woke before dawn. She ran through the silver forest, past the sleeping river.\n\n" +
-                    "The owl watched her go.\n\n" +
-                    "And then she was home.",
+            textScroll(
+                mapOf(
+                    "text" to
+                        "The fox woke before dawn. She ran through the silver forest, past the sleeping river.\n\n" +
+                        "The owl watched her go.\n\n" +
+                        "And then she was home.",
+                ),
             ),
         )
     }
@@ -87,7 +100,7 @@ class DeployedServiceE2ETest {
     }
 
     @Test
-    fun `story renders to the spec - h264 1920x1080 at 24fps with aac narration`() {
+    fun `text-scroll story renders to the spec - h264 1920x1080 at 24fps with aac narration`() {
         val (_, job, video) = story
         assertEquals(3, (job["scenes"] as List<*>).size, "scenes")
 
@@ -164,9 +177,11 @@ class DeployedServiceE2ETest {
     fun `custom options - resolution, fps and colours - are honoured`() {
         val (_, _, video) =
             render(
-                mapOf(
-                    "text" to "A short scene in a different size.",
-                    "options" to mapOf("width" to 1280, "height" to 720, "fps" to 30, "backgroundColor" to "#203040"),
+                textScroll(
+                    mapOf(
+                        "text" to "A short scene in a different size.",
+                        "options" to mapOf("width" to 1280, "height" to 720, "fps" to 30, "backgroundColor" to "#203040"),
+                    ),
                 ),
             )
         val v = ffmpeg.probeStreams(video).single { it["codec_type"] == "video" }
@@ -188,7 +203,7 @@ class DeployedServiceE2ETest {
             val results =
                 (1..4)
                     .map { n ->
-                        pool.submit<Rendered> { render(mapOf("text" to "Parallel story number $n.")) }
+                        pool.submit<Rendered> { render(textScroll(mapOf("text" to "Parallel story number $n."))) }
                     }.map { it.get() }
             assertEquals(4, results.map { it.id }.toSet().size)
             results.forEach { assertTrue(ffmpeg.probeDurationSeconds(it.video) > 1.0) }
@@ -199,7 +214,12 @@ class DeployedServiceE2ETest {
 
     @Test
     fun `video is 409 while the job is still rendering`() {
-        val created = post(mapOf("text" to "This job was only just submitted, so its video cannot exist yet. " + "More words. ".repeat(20)))
+        val created =
+            post(
+                textScroll(
+                    mapOf("text" to "This job was only just submitted, so its video cannot exist yet. " + "More words. ".repeat(20)),
+                ),
+            )
         assertEquals(HttpStatus.ACCEPTED, created.statusCode)
         val early =
             client
@@ -218,6 +238,7 @@ class DeployedServiceE2ETest {
                 "odd width" to mapOf("text" to "Hi.", "options" to mapOf("width" to 1921)),
                 "bad colour" to mapOf("text" to "Hi.", "options" to mapOf("textColor" to "red")),
                 "fps too high" to mapOf("text" to "Hi.", "options" to mapOf("fps" to 240)),
+                "unknown skill" to mapOf("text" to "Hi.", "skill" to "no-such-skill"),
             )
         cases.forEach { (name, body) ->
             val response = post(body)
@@ -235,6 +256,115 @@ class DeployedServiceE2ETest {
                 .retrieve()
                 .toBodilessEntity()
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+    }
+
+    @Test
+    fun `api key is required when the deployment has one`() {
+        assumeTrue(apiKey.isNotEmpty(), "no -Pe2e.apiKey given")
+        val anonymous =
+            client("")
+                .get()
+                .uri("/api/v1/skills")
+                .retrieve()
+                .toBodilessEntity()
+        assertEquals(HttpStatus.UNAUTHORIZED, anonymous.statusCode)
+        val wrong =
+            client("definitely-wrong")
+                .get()
+                .uri("/api/v1/skills")
+                .retrieve()
+                .toBodilessEntity()
+        assertEquals(HttpStatus.UNAUTHORIZED, wrong.statusCode)
+    }
+
+    @Test
+    fun `style skills are listed`() {
+        val skills =
+            client
+                .get()
+                .uri("/api/v1/skills")
+                .retrieve()
+                .body(List::class.java)!!
+                .map { (it as Map<*, *>)["name"] }
+        assertTrue(skills.containsAll(listOf("cartoon-storybook", "anime", "watercolor-bedtime", "comic-book", "text-scroll")), "$skills")
+    }
+
+    @Test
+    fun `cartoon short is delivered within 60 s as a vertical 720p video of at most 60 s`() {
+        val started = System.currentTimeMillis()
+        val (_, job, video) =
+            render(
+                mapOf(
+                    "text" to
+                        "Pip was a small orange fox who lived in a cosy den under an old oak tree. " +
+                        "One day he heard a tiny cry from the river: a baby owl named Olly was stuck on a floating log.\n\n" +
+                        "Pip leapt from rock to rock until he reached the log and pulled Olly to safety.\n\n" +
+                        "He wrapped his green scarf around her and carried her home. From that day on they were best friends.",
+                ),
+            )
+        val wallSeconds = (System.currentTimeMillis() - started) / 1000.0
+        println("cartoon short: wall ${wallSeconds}s, timings ${job["timingsMs"]}, degraded ${job["degraded"]}, notes ${job["notes"]}")
+
+        assertEquals("cartoon-storybook", job["skill"])
+        assertEquals(true, job["slaMet"], "service-side delivery time ${job["timingsMs"]}")
+        assertTrue(wallSeconds <= 62.0, "client saw ${wallSeconds}s (includes polling)")
+        if (requireAi) assertEquals(false, job["degraded"], "fallbacks used: ${job["notes"]}")
+
+        val v = ffmpeg.probeStreams(video).single { it["codec_type"] == "video" }
+        assertEquals("720" to "1280", v["width"] to v["height"])
+        assertEquals("30/1", v["r_frame_rate"])
+        assertTrue(ffmpeg.probeDurationSeconds(video) <= 60.05, "video must be Shorts length")
+        assertTrue(meanVolume(video) > -35.0, "narration should be audible")
+
+        val frame = frame(video, 2.0)
+        val lum = { x: Int, y: Int -> frame.getRGB(x, y).let { ((it shr 16 and 255) + (it shr 8 and 255) + (it and 255)) / 3 } }
+        assertTrue(lum(360, 400) > 15, "picture should be visible, not black")
+        val captionBand = (900..1150).flatMap { y -> (40..680 step 4).map { x -> lum(x, y) } }
+        assertTrue(captionBand.count { it > 200 } > 40, "caption text should be drawn in the lower third")
+    }
+
+    @Test
+    fun `staged flow - script, edit, render`() {
+        val created =
+            client
+                .post()
+                .uri("/api/v1/scripts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mapOf("text" to "A lighthouse keeper guided a lost boat home through the storm.", "skill" to "comic-book"))
+                .retrieve()
+                .toEntity(Map::class.java)
+        assertEquals(HttpStatus.CREATED, created.statusCode)
+        val id = created.body!!["id"]
+        println("staged script: degraded ${created.body!!["degraded"]}, scenes ${(created.body!!["scenes"] as List<*>).size}")
+
+        val edited =
+            client
+                .put()
+                .uri("/api/v1/scripts/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(
+                    mapOf(
+                        "scenes" to
+                            listOf(
+                                mapOf("narration" to "The storm raged.", "camera" to "zoom_in"),
+                                mapOf(
+                                    "narration" to "The boat came home.",
+                                ),
+                            ),
+                    ),
+                ).retrieve()
+                .toEntity(Map::class.java)
+        assertEquals(HttpStatus.OK, edited.statusCode)
+
+        val job =
+            client
+                .post()
+                .uri("/api/v1/scripts/{id}/render", id)
+                .retrieve()
+                .toEntity(Map::class.java)
+        assertEquals(HttpStatus.ACCEPTED, job.statusCode)
+        val done = awaitDone(job.body!!["jobId"].toString())
+        assertEquals(listOf("The storm raged.", "The boat came home."), (done["scenes"] as List<*>).map { (it as Map<*, *>)["text"] })
     }
 
     // ---- helpers ------------------------------------------------------------------------------
@@ -255,6 +385,21 @@ class DeployedServiceE2ETest {
         assertNotNull(created.headers.location, "Location header")
         val id = created.body!!["jobId"].toString()
 
+        val job = awaitDone(id)
+
+        val bytes =
+            client
+                .get()
+                .uri("/api/v1/jobs/{id}/video", id)
+                .retrieve()
+                .toEntity(ByteArray::class.java)
+        assertEquals(HttpStatus.OK, bytes.statusCode)
+        assertEquals("video/mp4", bytes.headers.contentType.toString())
+        val file = downloads.resolve("$id.mp4").apply { writeBytes(bytes.body!!) }
+        return Rendered(id, job, file)
+    }
+
+    private fun awaitDone(id: String): Map<*, *> {
         val started = System.currentTimeMillis()
         var job: Map<*, *>
         do {
@@ -269,17 +414,33 @@ class DeployedServiceE2ETest {
         } while (job["status"] !in setOf("DONE", "FAILED"))
         assertEquals("DONE", job["status"], "job $id failed: ${job["error"]}")
         println("job $id: ${job["durationSeconds"]} s of video in ${System.currentTimeMillis() - started} ms")
+        return job
+    }
 
-        val bytes =
-            client
-                .get()
-                .uri("/api/v1/jobs/{id}/video", id)
-                .retrieve()
-                .toEntity(ByteArray::class.java)
-        assertEquals(HttpStatus.OK, bytes.statusCode)
-        assertEquals("video/mp4", bytes.headers.contentType.toString())
-        val file = downloads.resolve("$id.mp4").apply { writeBytes(bytes.body!!) }
-        return Rendered(id, job, file)
+    private fun meanVolume(video: Path): Double {
+        val out =
+            processRunner
+                .run(
+                    listOf(
+                        "ffmpeg",
+                        "-hide_banner",
+                        "-nostats",
+                        "-i",
+                        video.toString(),
+                        "-map",
+                        "0:a",
+                        "-af",
+                        "volumedetect",
+                        "-f",
+                        "null",
+                        "-",
+                    ),
+                ).stderr
+        return Regex("mean_volume: (-?[\\d.]+) dB")
+            .find(out)
+            ?.groupValues
+            ?.get(1)
+            ?.toDouble() ?: fail("no volumedetect output")
     }
 
     private fun frame(

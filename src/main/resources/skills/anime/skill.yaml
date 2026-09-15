@@ -1,0 +1,23 @@
+name: anime
+description: Japanese anime look with cel shading, soft cinematic light and painted backgrounds.
+renderer: illustrated
+format: { width: 720, height: 1280, fps: 30, crf: 23, preset: veryfast }
+style: >-
+  Japanese anime illustration, crisp cel shading, expressive faces, soft cinematic lighting,
+  richly detailed hand-painted background, gentle depth of field
+negative: text, letters, watermark, signature, photo, 3d render, blurry, extra limbs
+wordsPerMinute: 155
+voices: { piper: en_US-lessac-medium, say: Samantha, espeak-ng: en-us }
+cameraMoves: [zoom_in, pan_left, pan_up, zoom_out, pan_right]
+scenes: { min: 3, max: 6 }
+maxWords: 130
+transitionSeconds: 0.35
+image: { width: 768, height: 1344, steps: 4 }
+caption:
+  fontSize: 44
+  textColor: "#FFFFFF"
+  outlineColor: "#101030"
+  boxColor: "#101030"
+  boxOpacity: 0.4
+  positionY: 0.82
+  maxWords: 5

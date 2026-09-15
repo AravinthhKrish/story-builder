@@ -48,12 +48,13 @@ COPY --from=piper /opt/piper /opt/piper
 COPY --from=build /src/build/libs/app.jar /app/app.jar
 
 # Every storybuilder.* setting can be overridden the same way, e.g. STORYBUILDER_MAX_CONCURRENT_JOBS=4.
+# The JVM gets half the container's memory: the other half is for Piper and ffmpeg child processes.
 # Switch to the robotic-but-light fallback voice with STORYBUILDER_TTS_ENGINE=espeak.
 ENV PATH="/opt/piper/venv/bin:${PATH}" \
     STORYBUILDER_WORK_DIR=/data/work \
     STORYBUILDER_TTS_ENGINE=piper \
     STORYBUILDER_TTS_PIPER_DATA_DIR=/opt/piper/voices \
-    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -Djava.awt.headless=true"
+    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=50 -Djava.awt.headless=true"
 
 USER storybuilder
 WORKDIR /app

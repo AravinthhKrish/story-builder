@@ -9,15 +9,43 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.io.IOException
 import java.nio.file.Path
+import java.util.concurrent.Executors
+import java.util.concurrent.Semaphore
 
-/** Stage 2 (audio layer): renders one scene's narration to a 48 kHz mono PCM WAV file. */
+/** Stage 2 (audio layer): renders each scene's narration to a mono PCM WAV file. */
 interface TtsEngine {
     val name: String
 
     fun synthesize(request: SpeechRequest)
 
+    /**
+     * Narration for every scene of a job. Default: a few engine processes at a time; engines with
+     * a costly start-up (Piper) override this to load once for the whole batch.
+     */
+    fun synthesizeAll(requests: List<SpeechRequest>) {
+        val permits = Semaphore(PARALLEL_PROCESSES)
+        Executors.newVirtualThreadPerTaskExecutor().use { executor ->
+            requests
+                .map { request ->
+                    executor.submit {
+                        permits.acquire()
+                        try {
+                            synthesize(request)
+                        } finally {
+                            permits.release()
+                        }
+                    }
+                }.forEach { it.get() }
+        }
+    }
+
     /** Throws with an actionable message when the engine cannot run on this machine. */
     fun checkAvailable()
+
+    companion object {
+        /** TTS engines are CPU-bound child processes; a few at once is the sweet spot on small hosts. */
+        const val PARALLEL_PROCESSES = 3
+    }
 }
 
 data class SpeechRequest(

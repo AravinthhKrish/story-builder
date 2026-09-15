@@ -1,6 +1,6 @@
 package com.lucy.storybuilder.pipeline.render
 
-import com.lucy.storybuilder.pipeline.RenderSettings
+import com.lucy.storybuilder.pipeline.VideoFormat
 import com.lucy.storybuilder.process.Ffmpeg
 import com.lucy.storybuilder.process.ProcessRunner
 import org.springframework.stereotype.Component
@@ -18,7 +18,7 @@ class FfmpegEncoder(
     private val processRunner: ProcessRunner,
 ) {
     fun encode(
-        settings: RenderSettings,
+        format: VideoFormat,
         totalFrames: Int,
         narration: Path?,
         output: Path,
@@ -27,11 +27,11 @@ class FfmpegEncoder(
     ) {
         val args =
             buildList {
-                addAll(listOf("-f", "rawvideo", "-pix_fmt", "bgr24", "-s", "${settings.width}x${settings.height}"))
-                addAll(listOf("-r", settings.fps.toString(), "-i", "-"))
+                addAll(listOf("-f", "rawvideo", "-pix_fmt", "bgr24", "-s", "${format.width}x${format.height}"))
+                addAll(listOf("-r", format.fps.toString(), "-i", "-"))
                 narration?.let { addAll(listOf("-i", it.toString(), "-map", "0:v", "-map", "1:a")) }
-                addAll(listOf("-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p"))
-                narration?.let { addAll(listOf("-c:a", "aac", "-b:a", "160k", "-shortest")) }
+                addAll(listOf("-c:v", "libx264", "-preset", format.preset, "-crf", format.crf.toString(), "-pix_fmt", "yuv420p"))
+                narration?.let { addAll(listOf("-c:a", "aac", "-b:a", "128k", "-shortest")) }
                 addAll(listOf("-movflags", "+faststart", output.toString()))
             }
 

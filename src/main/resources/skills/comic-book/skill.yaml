@@ -1,0 +1,23 @@
+name: comic-book
+description: Bold Western comic-book panels with ink lines, halftone shading and punchy colours.
+renderer: illustrated
+format: { width: 720, height: 1280, fps: 30, crf: 23, preset: veryfast }
+style: >-
+  Western comic book panel art, bold black ink outlines, halftone dot shading, saturated primary colours,
+  dynamic dramatic angle, strong silhouettes
+negative: text, letters, speech bubbles, watermark, signature, photo, blurry
+wordsPerMinute: 160
+voices: { piper: en_US-lessac-medium, say: Samantha, espeak-ng: en-us }
+cameraMoves: [zoom_in, pan_left, pan_right, zoom_out, pan_up]
+scenes: { min: 3, max: 6 }
+maxWords: 135
+transitionSeconds: 0.25
+image: { width: 768, height: 1344, steps: 4 }
+caption:
+  fontSize: 48
+  textColor: "#FFF45C"
+  outlineColor: "#000000"
+  boxColor: "#000000"
+  boxOpacity: 0.55
+  positionY: 0.8
+  maxWords: 4

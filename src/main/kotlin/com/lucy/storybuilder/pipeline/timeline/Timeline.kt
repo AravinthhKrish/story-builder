@@ -1,13 +1,11 @@
 package com.lucy.storybuilder.pipeline.timeline
 
-import com.lucy.storybuilder.pipeline.assets.TextBlock
-import com.lucy.storybuilder.pipeline.breakdown.Scene
 import org.springframework.stereotype.Component
 import kotlin.math.ceil
 
+/** Scene [index]'s slot on the frame grid. */
 data class TimelineEntry(
-    val scene: Scene,
-    val block: TextBlock,
+    val index: Int,
     val startFrame: Int,
     val frameCount: Int,
 )
@@ -21,6 +19,12 @@ class Timeline(
     val totalSeconds: Double get() = totalFrames.toDouble() / fps
 
     fun seconds(entry: TimelineEntry): Double = entry.frameCount.toDouble() / fps
+
+    /** Seconds since [entry] started, at [frame]. */
+    fun sceneTime(
+        entry: TimelineEntry,
+        frame: Int,
+    ): Double = (frame - entry.startFrame).toDouble() / fps
 
     /** The scene showing on [frame] (binary search over start frames). */
     fun entryAt(frame: Int): TimelineEntry {
@@ -39,18 +43,15 @@ class Timeline(
 @Component
 class TimelineBuilder {
     fun build(
-        scenes: List<Scene>,
-        blocks: List<TextBlock>,
         durationsSeconds: List<Double>,
         fps: Int,
     ): Timeline {
-        require(scenes.size == blocks.size && scenes.size == durationsSeconds.size) { "scenes, blocks and durations must align" }
         var start = 0
         val entries =
-            scenes.indices.map { i ->
+            durationsSeconds.mapIndexed { i, seconds ->
                 // Tolerance keeps an exact 2.0 s at 24 fps at 48 frames instead of 49 from float noise.
-                val frames = ceil(durationsSeconds[i] * fps - 1e-6).toInt().coerceAtLeast(1)
-                TimelineEntry(scenes[i], blocks[i], start, frames).also { start += frames }
+                val frames = ceil(seconds * fps - 1e-6).toInt().coerceAtLeast(1)
+                TimelineEntry(i, start, frames).also { start += frames }
             }
         return Timeline(fps, entries)
     }
