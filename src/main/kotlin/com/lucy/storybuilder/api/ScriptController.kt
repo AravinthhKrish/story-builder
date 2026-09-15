@@ -71,6 +71,13 @@ class ScriptController(
         val known = characters.map { it.id }.toSet()
         val scenes =
             request.scenes?.mapIndexed { i, s ->
+                val prompt = s.imagePrompt.orEmpty().trim()
+                // Sending back the prompt we generated (e.g. after a GET) is not a hand-written prompt.
+                val generatedBefore =
+                    current.scenes
+                        .getOrNull(i)
+                        ?.takeIf { !it.imagePromptCustom }
+                        ?.imagePrompt
                 ScriptScene(
                     narration = s.narration!!.trim(),
                     setting = s.setting.orEmpty().trim(),
@@ -78,9 +85,11 @@ class ScriptController(
                     emotion = s.emotion.orEmpty().trim(),
                     camera = s.camera ?: skill.cameraMoves[i % skill.cameraMoves.size],
                     characters = s.characters.orEmpty().filter { it in known },
-                    imagePrompt = s.imagePrompt.orEmpty().trim(),
+                    imagePrompt = prompt,
+                    imagePromptCustom = prompt.isNotEmpty() && prompt != generatedBefore,
                 )
             } ?: current.scenes.map { it.copy(characters = it.characters.filter { c -> c in known }) }
+        // Generated prompts are rebuilt below from the new characters/scenes; hand-written ones are kept.
 
         val updated =
             current.copy(

@@ -86,24 +86,32 @@ class ScriptDirectorTest {
     }
 
     @Test
-    fun `explicit image prompts survive a rebuild`() {
+    fun `hand-written image prompts survive a rebuild, generated ones are regenerated`() {
         val d = director(FakeLlm { CANNED_SCRIPT_JSON })
         val script = d.direct(story, cartoon)
+        assertFalse(script.scenes.any { it.imagePromptCustom })
+
         val edited =
             script.copy(
                 scenes =
                     script.scenes.mapIndexed { i, s ->
-                        if (i ==
-                            0
-                        ) {
-                            s.copy(imagePrompt = "custom")
-                        } else {
-                            s.copy(imagePrompt = "")
-                        }
+                        if (i == 0) s.copy(imagePrompt = "custom", imagePromptCustom = true) else s.copy(imagePrompt = "")
                     },
             )
         val rebuilt = d.withImagePrompts(edited, cartoon)
         assertEquals("custom", rebuilt.scenes[0].imagePrompt)
         assertEquals(script.scenes[1].imagePrompt, rebuilt.scenes[1].imagePrompt)
+    }
+
+    @Test
+    fun `stale generated prompts pick up edited character looks`() {
+        val d = director(FakeLlm { CANNED_SCRIPT_JSON })
+        val script = d.direct(story, cartoon)
+        val recast = script.copy(characters = script.characters.map { if (it.id == "olly") it.copy(look = "tiny white snowy owl") else it })
+
+        val rebuilt = d.withImagePrompts(recast, cartoon)
+
+        assertTrue("Olly (tiny white snowy owl)" in rebuilt.scenes[1].imagePrompt, rebuilt.scenes[1].imagePrompt)
+        assertFalse("round grey owl" in rebuilt.scenes[1].imagePrompt)
     }
 }

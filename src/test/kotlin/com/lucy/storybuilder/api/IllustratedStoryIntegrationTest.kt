@@ -187,6 +187,54 @@ class IllustratedStoryIntegrationTest {
     }
 
     @Test
+    fun `editing only characters rebuilds generated prompts but keeps hand-written ones`() {
+        val script = post("/api/v1/scripts", mapOf("text" to "Pip and Olly race home.")).body!!
+        val id = script["id"]
+        val scenes = script["scenes"] as List<*>
+
+        fun put(body: Map<String, Any>) =
+            client
+                .put()
+                .uri("/api/v1/scripts/$id")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map::class.java)!!
+
+        // GET -> edit one prompt by hand -> PUT: the echoed generated prompts stay generated.
+        val withCustom =
+            put(
+                mapOf(
+                    "scenes" to
+                        scenes.mapIndexed { i, s ->
+                            val scene = s as Map<*, *>
+                            scene.filterKeys { it != "imagePromptCustom" }.plus(
+                                "imagePrompt" to if (i == 0) "a hand-written prompt" else scene["imagePrompt"],
+                            )
+                        },
+                ),
+            )
+        val customScenes = withCustom["scenes"] as List<*>
+        assertEquals(listOf(true, false, false), customScenes.map { (it as Map<*, *>)["imagePromptCustom"] })
+
+        // Characters-only PUT: every generated prompt now carries the new look.
+        val recast =
+            put(
+                mapOf(
+                    "characters" to
+                        listOf(
+                            mapOf("id" to "pip", "name" to "Pip", "look" to "tall purple fox in a yellow raincoat"),
+                            mapOf("id" to "olly", "name" to "Olly", "look" to "round grey owl with big amber eyes and tiny glasses"),
+                        ),
+                ),
+            )
+        val prompts = (recast["scenes"] as List<*>).map { (it as Map<*, *>)["imagePrompt"].toString() }
+        assertEquals("a hand-written prompt", prompts[0])
+        assertTrue("Pip (tall purple fox in a yellow raincoat)" in prompts[2], prompts[2])
+        assertTrue(prompts.none { "small orange fox" in it }, "old look must be gone: $prompts")
+    }
+
+    @Test
     fun `skills are listed and bad script edits are rejected`() {
         val skills =
             client

@@ -40,8 +40,13 @@ data class ScriptScene(
     val camera: CameraMove = CameraMove.ZOOM_IN,
     /** Ids of the [ScriptCharacter]s visible in this scene. */
     val characters: List<String> = emptyList(),
-    /** Filled from the skill's image.md unless supplied explicitly. */
+    /** Built from the skill's image.md, unless [imagePromptCustom]. */
     val imagePrompt: String = "",
+    /**
+     * True when a user wrote [imagePrompt] by hand: it is then kept as-is. Generated prompts are
+     * rebuilt on every change, so edits to characters or scene fields always reach the images.
+     */
+    val imagePromptCustom: Boolean = false,
 )
 
 @Component

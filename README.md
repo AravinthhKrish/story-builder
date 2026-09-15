@@ -147,8 +147,10 @@ curl -X POST .../api/v1/scripts -d '{"text":"...", "skill":"anime"}'   # 201: th
 curl -X PUT  .../api/v1/scripts/<id> -d '{"scenes":[{"narration":"...", "setting":"...", "camera":"pan_left"}]}'
 curl -X POST .../api/v1/scripts/<id>/render                            # 202: a job, as above
 ```
-In a `PUT`, leave a scene's `imagePrompt` empty to rebuild it from the skill's template.
-`scenes` and `characters` replace the whole list.
+In a `PUT`, `scenes` and `characters` replace the whole list. Image prompts are rebuilt from the
+skill's template on every edit, so a changed character look or setting always reaches the pictures.
+The only exception is a scene whose `imagePrompt` you wrote yourself (`imagePromptCustom: true`).
+To go back to a generated prompt, send it empty.
 
 | Method | Path | Result |
 |---|---|---|

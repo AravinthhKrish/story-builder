@@ -83,7 +83,10 @@ class ScriptDirector(
         }
     }
 
-    /** (Re)builds image prompts from the skill template; explicit prompts on scenes are kept. */
+    /**
+     * Rebuilds every generated image prompt from the skill template and the script as it is now
+     * (characters, scene fields, title). Only hand-written prompts ([ScriptScene.imagePromptCustom]) are kept.
+     */
     fun withImagePrompts(
         script: StoryScript,
         skill: Skill,
@@ -93,7 +96,7 @@ class ScriptDirector(
         return script.copy(
             scenes =
                 script.scenes.map { scene ->
-                    if (scene.imagePrompt.isNotBlank()) return@map scene
+                    if (scene.imagePromptCustom && scene.imagePrompt.isNotBlank()) return@map scene
                     val cast =
                         scene.characters
                             .mapNotNull { byId[it] }
@@ -118,7 +121,7 @@ class ScriptDirector(
                                 "characters" to cast,
                             ),
                         )
-                    scene.copy(imagePrompt = tidy(prompt))
+                    scene.copy(imagePrompt = tidy(prompt), imagePromptCustom = false)
                 },
         )
     }
