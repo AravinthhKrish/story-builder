@@ -91,7 +91,11 @@ More options:
 - **More Piper voices:** `docker build --build-arg PIPER_VOICES="en_US-lessac-medium en_GB-alan-medium" .`
 - **Both architectures:** `docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/story-builder:0.1 --push .`
 - **Any `storybuilder.*` setting** can be an env var, e.g. `STORYBUILDER_MAX_CONCURRENT_JOBS=4`.
-- **Memory:** give Docker at least 4 GB. With 2 GB it works, but concurrent jobs get slow.
+- **Memory:** jobs run one at a time per 1.5 GB of memory and per 4 cores
+  (`STORYBUILDER_MAX_CONCURRENT_JOBS=0`, the default). A 2 GB Docker VM runs one job at a time and
+  queues the rest; give Docker 4 GB or more to run jobs side by side.
+- **Ollama on another machine:** set `STORYBUILDER_LLM_BASE_URL=http://<ip>:11434`, and start Ollama
+  there with `OLLAMA_HOST=0.0.0.0:11434` so it accepts network connections.
 
 Without `FAL_KEY` the service still works: scenes get offline placeholder art instead of
 illustrations. Without Ollama, a rule-based script is used. Either way the job reports

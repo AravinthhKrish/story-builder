@@ -19,8 +19,8 @@ services:
       STORYBUILDER_LLM_MODEL: ${STORYBUILDER_LLM_MODEL:-llama3.2:3b}
       # piper = natural neural voice, espeak = lightweight robotic fallback
       STORYBUILDER_TTS_ENGINE: ${STORYBUILDER_TTS_ENGINE:-piper}
-      # Rendering is CPU-bound: keep at or below the CPU cores given to the container.
-      STORYBUILDER_MAX_CONCURRENT_JOBS: 2
+      # Jobs rendered at once; 0 = auto (one per 1.5 GB of memory and per 4 cores, at least one).
+      STORYBUILDER_MAX_CONCURRENT_JOBS: ${STORYBUILDER_MAX_CONCURRENT_JOBS:-0}
     extra_hosts:
       # Lets Linux hosts reach a natively installed Ollama the same way Docker Desktop does.
       - "host.docker.internal:host-gateway"

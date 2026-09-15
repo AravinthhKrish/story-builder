@@ -16,8 +16,8 @@ storybuilder:
   work-dir: ./work
   ffmpeg-path: ffmpeg
   ffprobe-path: ffprobe
-  # Rendering is CPU-bound; keep this at or below the number of cores.
-  max-concurrent-jobs: 2
+  # Jobs rendered at once; extra jobs queue. 0 = auto: one per 1.5 GB of memory and per 4 cores.
+  max-concurrent-jobs: 0
   # Threads drawing video frames per job (0 = auto: cores - 1, at most 4).
   render-threads: 0
   max-text-length: 20000

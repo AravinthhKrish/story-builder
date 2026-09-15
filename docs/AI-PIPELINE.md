@@ -63,6 +63,12 @@ and Piper in Docker:
 |---|---|---|---|---|---|
 | Native (`bootRun`, macOS `say`) | 26 s | 8 s | 5 s | **40 s** | 16–19 s |
 | Docker (4 vCPU, 2 GB VM) | 24 s | 4 s | 11 s | **40 s** | 18 s |
+| Docker + `gemma3:latest` on a LAN Ollama host (GPU, 36 tok/s) | 16 s | 2 s | 7 s | **25 s** | — |
+
+Only the last row changes the director: Ollama on another machine
+(`STORYBUILDER_LLM_BASE_URL=http://<ip>:11434`, with `OLLAMA_HOST=0.0.0.0:11434` set on that host).
+`gemma4:e4b` returned empty replies to the schema-constrained request, so it isn't usable as a director
+as configured.
 
 What made the difference:
 - **Parallel frame drawing:** 8.5 → 3.4 ms per frame.

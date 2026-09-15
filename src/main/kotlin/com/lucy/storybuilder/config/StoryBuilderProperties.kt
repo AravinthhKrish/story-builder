@@ -9,7 +9,8 @@ data class StoryBuilderProperties(
     val workDir: Path = Path.of("./work"),
     val ffmpegPath: String = "ffmpeg",
     val ffprobePath: String = "ffprobe",
-    val maxConcurrentJobs: Int = 2,
+    /** 0 = auto: sized to the machine's memory and cores (see JobRunner). */
+    val maxConcurrentJobs: Int = 0,
     /** Threads drawing video frames per job; 0 = auto (cores - 1, at most 4). */
     val renderThreads: Int = 0,
     val maxTextLength: Int = 20_000,
