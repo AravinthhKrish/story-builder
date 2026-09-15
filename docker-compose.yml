@@ -1,0 +1,17 @@
+services:
+  story-builder:
+    build: .
+    image: story-builder:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # piper = natural neural voice (default), espeak = lightweight robotic fallback
+      STORYBUILDER_TTS_ENGINE: piper
+      # Rendering is CPU-bound: keep at or below the CPU cores given to the container.
+      STORYBUILDER_MAX_CONCURRENT_JOBS: 2
+    volumes:
+      - story-videos:/data/work
+    restart: unless-stopped
+
+volumes:
+  story-videos:

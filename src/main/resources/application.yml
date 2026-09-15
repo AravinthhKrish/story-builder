@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: story-builder
+  threads:
+    virtual:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+storybuilder:
+  # Per-job workspace: work/{jobId}/ holds scene audio, narration.wav and output.mp4
+  work-dir: ./work
+  ffmpeg-path: ffmpeg
+  ffprobe-path: ffprobe
+  # Rendering is CPU-bound; keep this at or below the number of cores.
+  max-concurrent-jobs: 2
+  max-text-length: 20000
+  # Fail fast at startup when ffmpeg / ffprobe / the TTS binary is missing.
+  verify-toolchain: true
+  tts:
+    # auto   -> first that works: say (macOS), then piper, then espeak-ng
+    # say    -> macOS built-in speech synthesizer
+    # piper  -> neural offline voice (pip install piper-tts + a voice model)
+    # espeak -> espeak-ng, lightweight and robotic (apt install espeak-ng)
+    # silent -> silence of the estimated scene length (tests / machines without TTS)
+    # Env override: STORYBUILDER_TTS_ENGINE=espeak
+    engine: auto
+    say:
+      voice: Samantha
+    piper:
+      binary: piper
+      voice: en_US-lessac-medium
+      data-dir: ./voices
+      native-words-per-minute: 210
+    espeak:
+      binary: espeak-ng
+      voice: en-us
+  breakdown:
+    words-per-minute: 150
+    min-scene-seconds: 3.0
+    max-words-per-scene: 40
+    audio-padding-seconds: 0.5
+  render:
+    width: 1920
+    height: 1080
+    fps: 24
+    start-y: 500.0
+    scroll-speed: 15.0
+    background-color: "#101826"
+    text-color: "#F5F1E6"
+    font-name: SansSerif
+    font-size: 64
+    margin: 160
+    fade-seconds: 0.4

@@ -1,0 +1,13 @@
+.git
+.gradle
+.kotlin
+.idea
+.vscode
+*.iml
+build
+work
+voices
+*.mp4
+Dockerfile
+docker-compose.yml
+.dockerignore
