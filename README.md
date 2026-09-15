@@ -5,6 +5,42 @@ A local Spring Boot service that turns written text into a narrated, scrolling-t
 (1920x1080, 24 fps, H.264 + AAC). The four-stage design — breakdown, assets, timeline/motion,
 rendering — is described in [docs/PIPELINE.md](docs/PIPELINE.md).
 
+## Example: story in, animation out
+
+**The story** ([docs/media/demo-request.json](docs/media/demo-request.json)):
+
+> Once upon a time, a small lighthouse stood alone at the edge of the sea. Every night it sent a
+> single beam across the dark water.
+>
+> One stormy evening, a fishing boat lost its way among the rocks. The keeper turned the lamp as
+> bright as it would go.
+>
+> The boat followed the light home, and the lighthouse was never lonely again.
+
+**The request**, sent to the Docker image with default options:
+```bash
+curl -X POST localhost:8080/api/v1/stories \
+  -H 'Content-Type: application/json' \
+  -d @docs/media/demo-request.json
+```
+
+**The generated animation.** It's 25 s long and each paragraph becomes a scene that fades in, drifts
+upward at 15 px/s, and fades out:
+
+![Generated animation of the lighthouse story](docs/media/lighthouse-story.gif)
+
+▶️ **[Watch the full video with narration (MP4, 1920x1080, 24 fps, 860 KB)](docs/media/lighthouse-story.mp4).**
+The GIF above is a silent 640 px preview. The MP4 is the exact service output, narrated by the
+Piper `en_US-lessac-medium` voice.
+
+How the story was split into scenes (`GET /api/v1/jobs/{id}`):
+
+| Scene | Text | Words | On screen |
+|---|---|---|---|
+| 0 | Once upon a time, a small lighthouse stood alone… | 26 | 10.42 s |
+| 1 | One stormy evening, a fishing boat lost its way… | 23 | 9.21 s |
+| 2 | The boat followed the light home… | 13 | 5.54 s |
+
 ## Run with Docker (Linux amd64 / arm64)
 The image bundles Java 21, FFmpeg, Piper (natural neural voice, default) and espeak-ng (light fallback).
 ```bash

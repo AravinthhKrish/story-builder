@@ -43,5 +43,7 @@ out/
 # Per-job render workspace (scene audio, narration, output videos)
 work/
 *.mp4
+# ...except the demo video shown in the README
+!docs/media/*.mp4
 # Local Piper voice models (storybuilder.tts.piper.data-dir)
 voices/
