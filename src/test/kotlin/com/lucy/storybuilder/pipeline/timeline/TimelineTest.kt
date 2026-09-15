@@ -130,4 +130,20 @@ class DurationBudgetTest {
         assertTrue(fit.slots.sum() <= 59.5)
         assertTrue(fit.notes.single().contains("dropped"))
     }
+
+    @Test
+    fun `a single scene too long even at max speed is trimmed to the limit`() {
+        val fit = DurationBudget.fit(listOf(90.0), listOf(3.0), 0.5, 60.0, 1.25) // 72.5 s even at 1.25x
+        assertEquals(1, fit.sceneCount)
+        assertEquals(listOf(59.5), fit.slots)
+        assertTrue(fit.notes.single().contains("trimmed"), fit.notes.toString())
+    }
+
+    @Test
+    fun `dropping scenes never leaves the total above the limit`() {
+        val fit = DurationBudget.fit(listOf(80.0, 5.0, 5.0), List(3) { 3.0 }, 0.5, 60.0, 1.25)
+        assertEquals(1, fit.sceneCount)
+        assertTrue(fit.slots.sum() <= 59.5, "total ${fit.slots.sum()}")
+        assertEquals(2, fit.notes.size, fit.notes.toString())
+    }
 }

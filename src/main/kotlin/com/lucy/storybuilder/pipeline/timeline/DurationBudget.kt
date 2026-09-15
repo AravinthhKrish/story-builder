@@ -54,10 +54,18 @@ object DurationBudget {
 
         var keep = all
         while (keep > 1 && slots(maxSpeedup, keep).sum() > target) keep--
-        val note =
-            "Story too long for ${fmt(maxTotalSeconds)} s: narration sped up ${fmt(maxSpeedup)}x and " +
+        val notes = mutableListOf<String>()
+        if (keep < all) {
+            notes += "Story too long for ${fmt(maxTotalSeconds)} s: narration sped up ${fmt(maxSpeedup)}x and " +
                 "the last ${all - keep} of $all scenes dropped"
-        return FittedDurations(maxSpeedup, keep, slots(maxSpeedup, keep), listOf(note))
+        }
+        var kept = slots(maxSpeedup, keep)
+        if (kept.sum() > target) {
+            // A single scene still too long even at max speed: its slot (and so its narration) is cut off.
+            notes += "First scene is ${fmt(kept.sum())} s even at ${fmt(maxSpeedup)}x; narration trimmed to ${fmt(target)} s"
+            kept = listOf(target)
+        }
+        return FittedDurations(maxSpeedup, keep, kept, notes)
     }
 
     private fun fmt(value: Double) = String.format(Locale.ROOT, "%.2f", value)

@@ -184,7 +184,7 @@ class StoryPipeline(
         val renderMs = videoSeconds * spec.format.fps * stats.renderMsPerFrame
         val elapsedMs = Duration.between(job.createdAt, Instant.now()).toMillis()
         val budgetMs = props.sla.deliverySeconds * 1000 - elapsedMs - renderMs - stats.assetsMs - SAFETY_MARGIN_MS
-        val budget = Duration.ofMillis(budgetMs.toLong().coerceIn(MIN_DIRECTOR_MS, props.llm.timeout.toMillis()))
+        val budget = Duration.ofMillis(clampDirectorBudget(budgetMs.toLong(), props.llm.timeout.toMillis()))
         log.info(
             "Job {} director budget {} ms (est. {} s video: render {} ms, assets {} ms, already {} ms)",
             job.id,
@@ -257,10 +257,22 @@ class StoryPipeline(
     }
 
     private companion object {
-        /** Never give the director less than this, or it could not answer even on fast hardware. */
-        const val MIN_DIRECTOR_MS = 4_000L
-
         /** Slack for probing, audio assembly and scheduling noise. */
         const val SAFETY_MARGIN_MS = 3_000.0
     }
+}
+
+/** Never give the director less than this, or it could not answer even on fast hardware. */
+private const val MIN_DIRECTOR_MS = 4_000L
+
+/**
+ * The director's budget, kept between [MIN_DIRECTOR_MS] and the configured LLM timeout. A timeout
+ * configured below the minimum is the ceiling and wins.
+ */
+internal fun clampDirectorBudget(
+    budgetMs: Long,
+    timeoutMs: Long,
+): Long {
+    val ceiling = timeoutMs.coerceAtLeast(0)
+    return budgetMs.coerceIn(minOf(MIN_DIRECTOR_MS, ceiling), ceiling)
 }
