@@ -1,5 +1,6 @@
 package com.lucy.storybuilder.config
 
+import com.lucy.storybuilder.ai.llm.LlmClient
 import com.lucy.storybuilder.pipeline.assets.tts.TtsEngine
 import com.lucy.storybuilder.process.ProcessRunner
 import org.slf4j.LoggerFactory
@@ -8,12 +9,16 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.stereotype.Component
 import java.io.IOException
 
-/** Fails startup with a clear fix when a required binary is missing, instead of failing the first job. */
+/**
+ * Fails startup with a clear fix when a required binary is missing, instead of failing the first job.
+ * The director LLM is only warned about: without it, illustrated scripts fall back to rule-based scenes.
+ */
 @Component
 class ToolchainCheck(
     private val props: StoryBuilderProperties,
     private val processRunner: ProcessRunner,
     private val tts: TtsEngine,
+    private val llm: LlmClient,
 ) : ApplicationRunner {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -27,6 +32,13 @@ class ToolchainCheck(
         }
         tts.checkAvailable()
         log.info("Toolchain OK: {} | TTS engine: {}", version, tts.name)
+
+        val llmProblem = llm.problem()
+        if (llmProblem == null) {
+            log.info("Director LLM OK: {}", llm.description)
+        } else {
+            log.warn("Director LLM unavailable, illustrated scripts will use the rule-based fallback: {}", llmProblem)
+        }
     }
 
     private fun runTool(vararg command: String): String =

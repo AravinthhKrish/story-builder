@@ -27,6 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
+    implementation("tools.jackson.dataformat:jackson-dataformat-yaml")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
     testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
@@ -56,7 +57,7 @@ tasks.test {
 }
 
 // Black-box tests against an already running instance (local, Docker, or a remote server):
-//   ./gradlew e2eTest -Pe2e.baseUrl=http://localhost:8080
+//   ./gradlew e2eTest -Pe2e.baseUrl=http://localhost:8080 -Pe2e.apiKey=<key> [-Pe2e.requireAi=true]
 tasks.register<Test>("e2eTest") {
     description = "Runs end-to-end tests against a running story-builder (-Pe2e.baseUrl, default http://localhost:8080)."
     group = "verification"
@@ -65,6 +66,8 @@ tasks.register<Test>("e2eTest") {
     classpath = testSources.runtimeClasspath
     useJUnitPlatform { includeTags("e2e") }
     systemProperty("e2e.baseUrl", providers.gradleProperty("e2e.baseUrl").getOrElse("http://localhost:8080"))
+    systemProperty("e2e.apiKey", providers.gradleProperty("e2e.apiKey").getOrElse(""))
+    systemProperty("e2e.requireAi", providers.gradleProperty("e2e.requireAi").getOrElse("false"))
     // The target is external state, so never treat a previous run as up to date.
     outputs.upToDateWhen { false }
     testLogging {

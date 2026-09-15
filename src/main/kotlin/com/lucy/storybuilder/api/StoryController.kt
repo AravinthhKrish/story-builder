@@ -3,6 +3,7 @@ package com.lucy.storybuilder.api
 import com.lucy.storybuilder.api.dto.CreateStoryRequest
 import com.lucy.storybuilder.api.dto.JobCreatedResponse
 import com.lucy.storybuilder.api.dto.JobResponse
+import com.lucy.storybuilder.job.Job
 import com.lucy.storybuilder.job.JobRunner
 import com.lucy.storybuilder.job.JobStatus
 import com.lucy.storybuilder.job.JobStore
@@ -30,18 +31,11 @@ class StoryController(
     private val runner: JobRunner,
     private val store: JobStore,
 ) {
-    /** Accepts a story and starts rendering it in the background. Poll the returned status URL. */
+    /** One-shot: story in, video out. Director + render run as one background job; poll the status URL. */
     @PostMapping("/stories")
     fun createStory(
         @Valid @RequestBody request: CreateStoryRequest,
-    ): ResponseEntity<JobCreatedResponse> {
-        val job = runner.submit(specFactory.create(request))
-        val statusUrl = jobUrl(job.id)
-        return ResponseEntity
-            .accepted()
-            .location(URI.create(statusUrl))
-            .body(JobCreatedResponse(job.id, job.status, statusUrl, "$statusUrl/video"))
-    }
+    ): ResponseEntity<JobCreatedResponse> = accepted(runner.submit(specFactory.create(request)))
 
     @GetMapping("/jobs/{id}")
     fun getJob(
@@ -75,11 +69,25 @@ class StoryController(
                     .toString(),
             ).body(FileSystemResource(output))
     }
-
-    private fun jobUrl(id: UUID): String =
-        ServletUriComponentsBuilder
-            .fromCurrentContextPath()
-            .path("/api/v1/jobs/{id}")
-            .buildAndExpand(id)
-            .toUriString()
 }
+
+/** `202 Accepted` + Location for a newly queued job; shared by the one-shot and staged endpoints. */
+internal fun accepted(job: Job): ResponseEntity<JobCreatedResponse> {
+    val statusUrl = jobUrl(job.id)
+    return ResponseEntity
+        .accepted()
+        .location(URI.create(statusUrl))
+        .body(JobCreatedResponse(job.id, job.status, job.spec.skill.name, statusUrl, "$statusUrl/video"))
+}
+
+internal fun jobUrl(id: UUID): String = apiUrl("/api/v1/jobs/{id}", id)
+
+internal fun apiUrl(
+    path: String,
+    id: UUID,
+): String =
+    ServletUriComponentsBuilder
+        .fromCurrentContextPath()
+        .path(path)
+        .buildAndExpand(id)
+        .toUriString()

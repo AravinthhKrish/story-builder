@@ -26,6 +26,7 @@ import kotlin.test.assertTrue
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = [
         "storybuilder.tts.engine=silent",
+        "storybuilder.images.provider=placeholder",
         "storybuilder.work-dir=build/test-work",
     ],
 )
@@ -61,10 +62,10 @@ class StoryApiIntegrationTest {
             .body(Map::class.java)!!
 
     @Test
-    fun `story is rendered to a 1080p 24fps h264 mp4 with narration`() {
+    fun `text-scroll story is rendered to a 1080p 24fps h264 mp4 with narration`() {
         val story = "The fox woke before dawn.\n\nShe ran through the silver forest.\n\nAnd then she was home."
 
-        val created = post(mapOf("text" to story))
+        val created = post(mapOf("text" to story, "skill" to "text-scroll"))
         assertEquals(HttpStatus.ACCEPTED, created.statusCode)
         assertNotNull(created.headers.location)
         val id = created.body!!["jobId"]!!
@@ -108,7 +109,10 @@ class StoryApiIntegrationTest {
     @Test
     fun `invalid requests are rejected as problem details`() {
         assertEquals(HttpStatus.BAD_REQUEST, post(mapOf("text" to "  ")).statusCode)
-        assertEquals(HttpStatus.BAD_REQUEST, post(mapOf("text" to "Hi.", "options" to mapOf("width" to 1921))).statusCode)
+        assertEquals(
+            HttpStatus.BAD_REQUEST,
+            post(mapOf("text" to "Hi.", "skill" to "text-scroll", "options" to mapOf("width" to 1921))).statusCode,
+        )
 
         val badColor = post(mapOf("text" to "Hi.", "options" to mapOf("textColor" to "red")))
         assertEquals(HttpStatus.BAD_REQUEST, badColor.statusCode)

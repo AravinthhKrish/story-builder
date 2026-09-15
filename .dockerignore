@@ -11,3 +11,5 @@ voices
 Dockerfile
 docker-compose.yml
 .dockerignore
+.env
+docs/media

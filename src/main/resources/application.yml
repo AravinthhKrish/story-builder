@@ -18,9 +18,45 @@ storybuilder:
   ffprobe-path: ffprobe
   # Rendering is CPU-bound; keep this at or below the number of cores.
   max-concurrent-jobs: 2
+  # Threads drawing video frames per job (0 = auto: cores - 1, at most 4).
+  render-threads: 0
   max-text-length: 20000
   # Fail fast at startup when ffmpeg / ffprobe / the TTS binary is missing.
   verify-toolchain: true
+  # Style skill used when a request doesn't name one. Bundled: cartoon-storybook, anime,
+  # watercolor-bedtime, comic-book, text-scroll (the original, no-AI look). GET /api/v1/skills lists them.
+  default-skill: cartoon-storybook
+  skills:
+    # Optional folder of extra skills (<dir>/<name>/skill.yaml + director.md + image.md).
+    dir:
+  # Scene director: turns a story into narration + characters + picture descriptions.
+  llm:
+    provider: ollama            # ollama | openai-compatible
+    base-url: http://localhost:11434
+    model: llama3.2:3b
+    api-key:                    # Bearer token for openai-compatible hosts
+    timeout: 30s                # upper bound; one-shot jobs get less if the delivery budget needs it
+    temperature: 0.4
+    max-output-tokens: 900
+    keep-alive: 30m
+  images:
+    provider: auto              # auto (fal when FAL_KEY is set, else placeholder) | fal | placeholder
+    concurrency: 6
+    timeout: 20s
+    retries: 1
+    fal:
+      base-url: https://fal.run
+      model: fal-ai/flux/schnell
+      api-key: ${FAL_KEY:}
+      sync-mode: true
+  security:
+    # Accepted X-API-Key values for /api/**. Empty = no authentication (local development only).
+    # Env: STORYBUILDER_SECURITY_API_KEYS=key1,key2
+    api-keys: []
+  sla:
+    max-video-seconds: 60       # Shorts length
+    delivery-seconds: 60        # request -> video ready target, reported as slaMet
+    max-speedup: 1.25           # narration speed-up allowed before trailing scenes are dropped
   tts:
     # auto   -> first that works: say (macOS), then piper, then espeak-ng
     # say    -> macOS built-in speech synthesizer

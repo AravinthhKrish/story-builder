@@ -1,0 +1,23 @@
+name: cartoon-storybook
+description: Bright 2D cartoon in a children's picture-book style. The default Shorts look.
+renderer: illustrated
+format: { width: 720, height: 1280, fps: 30, crf: 23, preset: veryfast }
+style: >-
+  Bright 2D cartoon children's storybook illustration, bold clean outlines, flat vibrant colours,
+  soft cel shading, cute expressive characters with big eyes, simple readable shapes
+negative: text, letters, watermark, signature, photo, realistic, blurry, deformed hands
+wordsPerMinute: 150
+voices: { piper: en_US-lessac-medium, say: Samantha, espeak-ng: en-us }
+cameraMoves: [zoom_in, pan_right, zoom_out, pan_left, pan_up]
+scenes: { min: 3, max: 6 }
+maxWords: 130
+transitionSeconds: 0.4
+image: { width: 768, height: 1344, steps: 4 }
+caption:
+  fontSize: 46
+  textColor: "#FFFFFF"
+  outlineColor: "#1B1B1B"
+  boxColor: "#000000"
+  boxOpacity: 0.35
+  positionY: 0.8
+  maxWords: 5

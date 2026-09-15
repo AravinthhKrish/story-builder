@@ -1,0 +1,1 @@
+{{style}}. Scene: {{setting}}. {{characters}} {{action}}, mood {{emotion}}. Vertical 9:16 composition, main subject in the upper two thirds, uncluttered lower third, wordless picture with no text, no letters and no captions.

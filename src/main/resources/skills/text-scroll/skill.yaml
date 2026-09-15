@@ -1,0 +1,6 @@
+name: text-scroll
+description: The original look. Scrolling narrated text on a plain background, landscape 1080p, no AI.
+renderer: text-scroll
+# Text scrolling follows docs/PIPELINE.md: 1920x1080 at 24 fps, y = 500 - t * 15.
+# Colours, font and motion come from storybuilder.render.* and the request's options.
+format: { width: 1920, height: 1080, fps: 24, crf: 20, preset: medium }

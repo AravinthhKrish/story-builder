@@ -2,11 +2,14 @@ package com.lucy.storybuilder.job
 
 import com.lucy.storybuilder.pipeline.JobSpec
 import com.lucy.storybuilder.pipeline.breakdown.Scene
+import com.lucy.storybuilder.script.StoryScript
 import org.springframework.stereotype.Component
 import java.nio.file.Path
 import java.time.Instant
+import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 enum class JobStatus {
     QUEUED,
@@ -39,6 +42,19 @@ class Job(
     @Volatile var scenes: List<SceneResult> = emptyList()
 
     @Volatile var durationSeconds: Double? = null
+
+    @Volatile var script: StoryScript? = null
+
+    /** Something was substituted to keep going: rule-based script, placeholder art, sped-up or trimmed audio. */
+    @Volatile var degraded: Boolean = false
+
+    /** Delivered within `storybuilder.sla.delivery-seconds`; null until the job finishes. */
+    @Volatile var slaMet: Boolean? = null
+
+    val notes: MutableList<String> = CopyOnWriteArrayList()
+
+    /** Wall-clock milliseconds per stage, in execution order. */
+    val timingsMs: MutableMap<String, Long> = Collections.synchronizedMap(LinkedHashMap())
 
     @Volatile var error: String? = null
         private set
